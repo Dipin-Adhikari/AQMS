@@ -3,14 +3,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import schemas, crud, database
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
 app = FastAPI()
 
 # CORS
+frontend_url = os.getenv("FRONTEND_URL")
 origins = [
-    "http://localhost:3000",
-    "https://your-frontend.onrender.com"
+   frontend_url 
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -38,3 +41,7 @@ async def upload_full_data(data: schemas.AQMSFullDataCreate):
 @app.get("/api/data", response_model=list[schemas.AQMSFullDataResponse])
 async def get_full_data():
     return await crud.get_all_full_data()
+
+@app.get("/")
+async def root():
+    return {"message": "Backend is running"}
