@@ -12,8 +12,10 @@ app = FastAPI()
 
 # CORS
 frontend_url = os.getenv("FRONTEND_URL")
+monitoring_url = os.getenv("MONITORING_URL")
 origins = [
-   frontend_url 
+   frontend_url,
+   monitoring_url
 ]
 app.add_middleware(
     CORSMiddleware,
