@@ -8,7 +8,7 @@ class AQMSFullDataBase(BaseModel):
     pm25: float
     pm10: float
     temp: float
-    hum: int
+    hum: float
     battery: float
     vin: float
     vout: float
