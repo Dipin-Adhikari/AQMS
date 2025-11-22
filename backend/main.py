@@ -254,9 +254,11 @@ async def export_csv(
         buf.seek(0)
         buf.truncate(0)
         # Write data rows
+
+        nepal_tz = pytz.timezone("Asia/kathmandu")
         for reading in all_data:
             writer.writerow([
-                datetime.fromtimestamp(reading["ts"]).isoformat(),
+                datetime.fromtimestamp(reading["ts"], nepal_tz).isoformat(),
                 reading["pm1"], reading["pm25"], reading["pm10"], reading["temp"], reading["hum"],
                 reading["battery"], reading["vin"], reading["vout"],
                 reading["aht20"], reading["rtc"],

@@ -350,11 +350,16 @@ export default function AQMSLanding() {
             </div>
             <span className="font-bold text-gray-900">AQMS</span>
           </div>
-          <div className="flex gap-6 text-sm text-gray-600">
+          <div className="flex gap-6 text-sm text-gray-600 items-center">
             <a href="#" className="hover:text-indigo-600">About</a>
             <a href="#" className="hover:text-indigo-600">Privacy</a>
             <a href="#" className="hover:text-indigo-600">Terms</a>
-            <a href="#" className="hover:text-indigo-600">Contact</a>
+            <button 
+              onClick={() => router.push("/contact")} 
+              className="hover:text-indigo-600 transition-colors"
+            >
+              Contact
+            </button>
           </div>
           <p className="text-xs text-gray-500">© 2025 AQMS. Real-time monitoring.</p>
         </div>

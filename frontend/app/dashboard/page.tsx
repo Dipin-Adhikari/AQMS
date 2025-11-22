@@ -1,9 +1,9 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import LiveCards from "../../components/dashboard/LiveCards";
 import TrendCharts from "../../components/dashboard/TrendCharts";
 import DashboardControls from "../../components/dashboard/DashboardControls";
-import { Wind, Clock, RefreshCcw } from "lucide-react";
+import { Wind, Clock, RefreshCcw, Activity } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // Combined Reading type
@@ -20,53 +20,74 @@ type Reading = {
 };
 
 function formatTime(ts: number) {
-  const d = new Date(ts * 1000); // Convert Unix timestamp (seconds) to ms
+  const d = new Date(ts * 1000);
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState<Reading[]>([]);
-  const [range, setRange] = useState<"1h" | "24h" | "7d">("24h");
+  // Changed default to match standard range options
+  const [range, setRange] = useState<"24h" | "7d" | "30d">("24h");
   const [live, setLive] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch AQ & health data, reverse so oldest-to-newest!
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-  const fetchAllData = async () => {
+
+  // 1. Fetch Data
+  const fetchAllData = useCallback(async () => {
     setRefreshing(true);
     try {
       const res = await fetch(`${API_URL}/api/data`);
       const json = await res.json();
-      setData([...json].reverse()); // Fix order to oldest-to-newest!
+      // Ensure data is sorted by timestamp (Oldest -> Newest) for charts
+      const sortedData = Array.isArray(json) ? [...json].sort((a, b) => a.ts - b.ts) : [];
+      setData(sortedData);
     } catch (e) {
       console.error("Failed to fetch data", e);
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [API_URL]);
 
   useEffect(() => {
     fetchAllData();
     let interval: any;
     if (live) {
-      interval = setInterval(fetchAllData, 6000);
+      interval = setInterval(fetchAllData, 6000); // Poll every 6 seconds
     }
     return () => interval && clearInterval(interval);
-  }, [live]);
+  }, [live, fetchAllData]);
 
-  // Slice correct range (no need to reverse again)
+  // 2. Fix: Time-based filtering instead of array slicing
+  // This ensures "24h" is actually 24 hours of data, regardless of update frequency
   const viewData = useMemo(() => {
     if (!data.length) return [];
-    if (range === "24h") return data.slice(-48);  // 48 records/day
-    if (range === "7d") return data.slice(-336); // 7 * 48 records/day
-    return data.slice(-1440); // 30 days * 48 records/day
+    
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    let secondsToSubtract = 0;
+
+    switch (range) {
+      case "24h":
+        secondsToSubtract = 24 * 60 * 60;
+        break;
+      case "7d":
+        secondsToSubtract = 7 * 24 * 60 * 60;
+        break;
+      case "30d": // Changed '1mo' to '30d' for clarity
+        secondsToSubtract = 30 * 24 * 60 * 60;
+        break;
+      default:
+        secondsToSubtract = 24 * 60 * 60;
+    }
+
+    const cutoffTimestamp = nowSeconds - secondsToSubtract;
+    return data.filter((reading) => reading.ts >= cutoffTimestamp);
   }, [data, range]);
 
-  // Get actual latest entry (should be final element now!)
   const latest = data[data.length - 1];
 
-  // Stats from the range
+  // 3. Calculate Stats
   const stats = useMemo(() => {
     if (!latest || !viewData.length) return null;
     const arr = viewData;
@@ -89,25 +110,17 @@ export default function DashboardPage() {
     };
   }, [viewData, latest]);
 
-  // Tooltip formatter (unchanged)
   const tooltipFormatter = (value: any, name: string) => {
     if (name.toLowerCase().includes("pm")) return [`${value} µg/m³`, name];
     if (name.toLowerCase().includes("temp")) return [`${value} °C`, name];
     if (name.toLowerCase().includes("hum")) return [`${value} %`, name];
-    if (name.toLowerCase().includes("battery")) return [`${value} V`, name];
-    if (name.toLowerCase().includes("vin") || name.toLowerCase().includes("vout")) return [`${value} V`, name];
     return [value, name];
   };
 
-  // Format last updated timestamp from 'latest'
   const getLastUpdatedDisplay = () => {
     if (!latest?.ts) return "Loading...";
     const date = new Date(latest.ts * 1000);
     return date.toLocaleString("en-US", {
-      timeZone: "Asia/Kathmandu",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -117,55 +130,64 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 py-8">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4 mb-6">
+        
+        {/* Header Section - Aligned */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+          
+          {/* Branding */}
           <div className="flex items-center gap-4">
             <div
-              className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg p-2 shadow-md"
+              className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl p-3 shadow-lg cursor-pointer hover:scale-105 transition-transform"
               onClick={() => router.push("/")}
-              title="Go Home"
             >
               <Wind className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+              <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
                 Air Quality Dashboard
               </h2>
-              <p className="text-sm text-gray-600">
-                Real-time readings and trends
+              <p className="text-sm text-gray-600 font-medium">
+                Real-time environmental monitoring
               </p>
             </div>
-            {/* Live Indicator, stays in its own box */}
-            <div className="ml-4 inline-flex items-center gap-2 bg-white/60 px-3 py-1 rounded-full border border-gray-100 shadow-sm">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-xs text-gray-700">Live</span>
-            </div>
-            {/* Separate Refresh Button box JUST TO THE RIGHT */}
-            <div className="ml-2 flex items-center bg-white/70 px-2 py-1 rounded-full border border-gray-200 shadow hover:bg-gray-100 transition">
-              <button
-                onClick={fetchAllData}
-                className="p-0.5"
-                title="Refresh now"
-                disabled={refreshing}
-                style={{
-                  opacity: refreshing ? 0.5 : 1,
-                  cursor: refreshing ? "not-allowed" : "pointer"
-                }}
-              >
-                <RefreshCcw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-              </button>
-            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-xs text-gray-500 flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span>Last Updated: {getLastUpdatedDisplay()}</span>
+
+          {/* Controls & Status - Aligned in one row */}
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
+            
+            {/* Live Pulse */}
+            <div className="flex items-center gap-2 border-r border-gray-200 pr-3 mr-1">
+                <div className={`w-2.5 h-2.5 rounded-full ${live ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    {live ? "Live" : "Paused"}
+                </span>
             </div>
+
+            {/* Last Updated */}
+            <div className="flex flex-col items-end mr-2">
+                <span className="text-[10px] text-gray-400 font-bold uppercase">Last Update</span>
+                <span className="text-xs font-mono font-semibold text-gray-700">
+                    {getLastUpdatedDisplay()}
+                </span>
+            </div>
+
+            {/* Refresh Button */}
+            <button
+              onClick={fetchAllData}
+              disabled={refreshing}
+              className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors"
+              title="Refresh Data"
+            >
+              <RefreshCcw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
           </div>
         </div>
+
         {/* Live Stat Cards */}
         <LiveCards latest={latest} stats={stats} />
-        {/* Range Controls */}
+
+        {/* Range Controls & Charts */}
+        {/* Ensure DashboardControls accepts 'range' and 'setRange' props correctly */}
         <DashboardControls
           range={range}
           setRange={setRange}
@@ -174,7 +196,7 @@ export default function DashboardPage() {
           live={live}
           lastUpdated={latest?.ts ? latest.ts * 1000 : null}
         />
-        {/* Charts */}
+
         <TrendCharts
           viewData={viewData}
           latest={latest}
@@ -182,6 +204,7 @@ export default function DashboardPage() {
           formatTime={formatTime}
           tooltipFormatter={tooltipFormatter}
         />
+        
         <div className="py-10" />
       </div>
     </div>
