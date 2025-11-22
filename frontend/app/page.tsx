@@ -1,12 +1,31 @@
 "use client";
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from "next/navigation";
-import { Wind, Activity, TrendingUp, Bell, Gauge, Shield, ArrowRight, CheckCircle, Sparkles, Clock, RefreshCw, Zap } from 'lucide-react';
+import { Wind, Activity, Bell, Gauge, Sparkles, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
+
+// 1. Type Definition
+type Reading = {
+  ts: number;
+  pm1: number;
+  pm25: number;
+  pm10: number;
+  temp: number;
+  hum: number;
+  battery: number;
+  vin: number;
+  vout: number;
+};
 
 export default function AQMSLanding() {
   const router = useRouter();
-  const [hoveredFeature, setHoveredFeature] = React.useState<number | null>(null);
+  const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
+  
+  // Data States
+  const [latestReading, setLatestReading] = useState<Reading | null>(null);
+  const [timeAgo, setTimeAgo] = useState<string>("Loading...");
+  const [loading, setLoading] = useState(true);
 
+  // Static Features
   const features = [
     {
       icon: <Gauge className="w-6 h-6" />,
@@ -35,12 +54,105 @@ export default function AQMSLanding() {
     { icon: "🌡️", name: "Temp & Humidity", detail: "Environmental Conditions", status: "Normal" }
   ];
 
-  const recentReadings = [
-    { time: "2 mins ago", level: "Good", value: "12 µg/m³" },
-    { time: "5 mins ago", level: "Good", value: "15 µg/m³" },
-    { time: "10 mins ago", level: "Moderate", value: "38 µg/m³" },
-    { time: "15 mins ago", level: "Good", value: "22 µg/m³" }
-  ];
+  // 2. Fetch Data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const res = await fetch(`${API_URL}/api/data`);
+        const json: Reading[] = await res.json();
+
+        if (json && json.length > 0) {
+          const sorted = json.sort((a, b) => a.ts - b.ts);
+          setLatestReading(sorted[sorted.length - 1]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch landing data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 60000); // Poll every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  // 3. Time Ago Logic
+  useEffect(() => {
+    if (!latestReading) return;
+
+    const updateTimeLabel = () => {
+      const now = Date.now();
+      const dataTime = latestReading.ts * 1000;
+      const diffSeconds = Math.floor((now - dataTime) / 1000);
+
+      if (diffSeconds < 60) {
+        setTimeAgo(`${diffSeconds} seconds ago`);
+      } else if (diffSeconds < 3600) {
+        const mins = Math.floor(diffSeconds / 60);
+        setTimeAgo(`${mins} minute${mins > 1 ? 's' : ''} ago`);
+      } else {
+        const hours = Math.floor(diffSeconds / 3600);
+        setTimeAgo(`${hours} hour${hours > 1 ? 's' : ''} ago`);
+      }
+    };
+
+    updateTimeLabel();
+    const timer = setInterval(updateTimeLabel, 1000);
+    return () => clearInterval(timer);
+  }, [latestReading]);
+
+  // 4. WHO Standards Classification (2021 Guidelines)
+  const getWHOStatus = (pm25: number) => {
+    // 0 - 15: Good (Meets WHO 24h Guideline)
+    if (pm25 <= 15) return { 
+      text: "Good", 
+      color: "text-emerald-700", 
+      valueColor: "text-emerald-800",
+      bg: "from-emerald-50 to-teal-50", 
+      border: "border-emerald-200",
+      icon: <CheckCircle className="w-4 h-4 text-emerald-600" />
+    };
+    // 15 - 25: Moderate (WHO Interim Target 4)
+    if (pm25 <= 25) return { 
+      text: "Moderate", 
+      color: "text-yellow-700", 
+      valueColor: "text-yellow-800",
+      bg: "from-yellow-50 to-amber-50", 
+      border: "border-yellow-200",
+      icon: <Activity className="w-4 h-4 text-yellow-600" />
+    };
+    // 25 - 37.5: Unhealthy for Sensitive Groups (WHO Interim Target 3)
+    if (pm25 <= 37.5) return { 
+      text: "Sensitive", 
+      color: "text-orange-700", 
+      valueColor: "text-orange-800",
+      bg: "from-orange-50 to-red-50", 
+      border: "border-orange-200",
+      icon: <AlertTriangle className="w-4 h-4 text-orange-600" />
+    };
+    // 37.5 - 50: Unhealthy (WHO Interim Target 2)
+    if (pm25 <= 50) return { 
+      text: "Unhealthy", 
+      color: "text-red-700", 
+      valueColor: "text-red-800",
+      bg: "from-red-50 to-rose-50", 
+      border: "border-red-200",
+      icon: <AlertTriangle className="w-4 h-4 text-red-600" />
+    };
+    // > 50: Hazardous (WHO Interim Target 1 & Exceeded)
+    return { 
+      text: "Hazardous", 
+      color: "text-purple-700", 
+      valueColor: "text-purple-900",
+      bg: "from-purple-50 to-fuchsia-50", 
+      border: "border-purple-200",
+      icon: <AlertTriangle className="w-4 h-4 text-purple-600" />
+    };
+  };
+
+  const currentStatus = latestReading ? getWHOStatus(latestReading.pm25) : getWHOStatus(0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50">
@@ -79,7 +191,7 @@ export default function AQMSLanding() {
             </span>
           </h2>
           <p className="text-lg text-gray-600 leading-relaxed">
-            Track PM2.5 levels and air quality parameters in real-time. Get instant alerts when air quality changes.
+            Track PM2.5 levels and air quality parameters in real-time. Get instant alerts based on WHO standards.
           </p>
           <div className="flex flex-wrap gap-3 pt-3">
             <button
@@ -107,32 +219,48 @@ export default function AQMSLanding() {
             </div>
 
             <div className="p-4 space-y-3 h-80 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+              
+              {/* Main PM2.5 Card with Dynamic WHO Styling */}
+              <div className={`bg-gradient-to-br ${currentStatus.bg} rounded-xl p-4 border ${currentStatus.border} transition-colors duration-500`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-green-700">Current AQI</span>
-                  <span className="text-xs text-green-600">Good</span>
+                  <div className="flex items-center gap-1.5">
+                    {currentStatus.icon}
+                    <span className={`text-xs font-bold ${currentStatus.color}`}>Current PM2.5</span>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-white/50 ${currentStatus.color}`}>
+                    {loading ? "..." : currentStatus.text}
+                  </span>
                 </div>
-                <div className="text-4xl font-bold text-green-700">42</div>
-                <div className="text-xs text-green-600 mt-1">Air Quality Index</div>
+                <div className={`text-4xl font-bold ${currentStatus.valueColor}`}>
+                  {loading ? "--" : latestReading?.pm25}
+                </div>
+                <div className={`text-xs ${currentStatus.color} mt-1 font-medium opacity-80`}>µg/m³</div>
               </div>
 
+              {/* PM1 Card */}
               <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-700">PM2.5</span>
-                  <span className="text-sm text-indigo-600 font-bold">12 µg/m³</span>
+                  <span className="text-xs font-semibold text-gray-700">PM1.0</span>
+                  <span className="text-sm text-indigo-600 font-bold">
+                    {loading ? "--" : latestReading?.pm1} µg/m³
+                  </span>
                 </div>
               </div>
 
+              {/* PM10 Card */}
               <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-700">PM10</span>
-                  <span className="text-sm text-indigo-600 font-bold">28 µg/m³</span>
+                  <span className="text-sm text-indigo-600 font-bold">
+                    {loading ? "--" : latestReading?.pm10} µg/m³
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-gray-500 pt-2">
+              {/* Time Ago */}
+              <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 pl-1">
                 <Activity className="w-3 h-3" />
-                <span>Updated 2 seconds ago</span>
+                <span>Updated {timeAgo}</span>
               </div>
             </div>
 

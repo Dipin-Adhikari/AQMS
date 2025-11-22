@@ -2,7 +2,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import LiveCards from "../../components/dashboard/LiveCards";
 import TrendCharts from "../../components/dashboard/TrendCharts";
-import HealthCards from "../../components/dashboard/HealthCards";
 import DashboardControls from "../../components/dashboard/DashboardControls";
 import { Wind, Clock, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -160,7 +159,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <div className="text-xs text-gray-500 flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              <span>Updated {getLastUpdatedDisplay()}</span>
+              <span>Last Updated: {getLastUpdatedDisplay()}</span>
             </div>
           </div>
         </div>
@@ -183,8 +182,6 @@ export default function DashboardPage() {
           formatTime={formatTime}
           tooltipFormatter={tooltipFormatter}
         />
-        {/* System Health */}
-        <HealthCards latest={latest} healthData={viewData} />
         <div className="py-10" />
       </div>
     </div>
