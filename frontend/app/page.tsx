@@ -13,7 +13,6 @@ type Reading = {
   hum: number;
   battery: number;
   vin: number;
-  vout: number;
 };
 
 export default function AQMSLanding() {

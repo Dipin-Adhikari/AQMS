@@ -14,9 +14,6 @@ type Reading = {
   pm10: number;
   temp: number;
   hum: number;
-  battery: number;
-  vin: number;
-  vout: number;
 };
 
 function formatTime(ts: number) {
@@ -104,9 +101,6 @@ export default function DashboardPage() {
       pm10: compute("pm10"),
       temp: compute("temp"),
       hum: compute("hum"),
-      battery: compute("battery"),
-      vin: compute("vin"),
-      vout: compute("vout"),
     };
   }, [viewData, latest]);
 

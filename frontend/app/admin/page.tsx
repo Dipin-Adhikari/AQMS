@@ -12,7 +12,6 @@ type Reading = {
   hum: number;
   battery: number;
   vin: number;
-  vout: number;
   aht20: boolean;
   rtc: boolean;
   pms7003: boolean;

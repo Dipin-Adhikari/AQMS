@@ -146,14 +146,7 @@ export default function HealthCards({ latest, healthData }: any) {
           icon={Zap}
           color={{ text: "text-blue-600", bg: "bg-blue-100", hex: "#2563eb" }} 
         />
-        <Card 
-          title="Output Voltage" 
-          value={latest?.vout} 
-          unit="V" 
-          dataKey="vout" 
-          icon={Activity}
-          color={{ text: "text-purple-600", bg: "bg-purple-100", hex: "#9333ea" }} 
-        />
+
       </div>
     </div>
   );

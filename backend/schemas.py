@@ -12,7 +12,6 @@ class AQMSFullDataBase(BaseModel):
     hum: float
     battery: float
     vin: float
-    vout: float
 
     aht20: bool
     rtc: bool

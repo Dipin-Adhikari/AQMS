@@ -13,7 +13,7 @@ export default function ChangePasswordPage() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); 
     setError("");
     setSuccess("");
 

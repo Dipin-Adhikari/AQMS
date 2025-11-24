@@ -242,7 +242,7 @@ async def export_csv(
 
     headers = [
         "Timestamp", "PM1.0", "PM2.5", "PM10", "Temperature", "Humidity", "Battery",
-        "Vin", "Vout", "AHT20", "RTC", "PMS7003", "WiFi", "NTP", "SD Card", "Thingspeak"
+        "Vin", "AHT20", "RTC", "PMS7003", "WiFi", "NTP", "SD Card", "Thingspeak"
     ]
 
     def csv_generator():
@@ -260,7 +260,7 @@ async def export_csv(
             writer.writerow([
                 datetime.fromtimestamp(reading["ts"], nepal_tz).isoformat(),
                 reading["pm1"], reading["pm25"], reading["pm10"], reading["temp"], reading["hum"],
-                reading["battery"], reading["vin"], reading["vout"],
+                reading["battery"], reading["vin"],
                 reading["aht20"], reading["rtc"],
                 reading["pms7003"], reading["wifi"], reading["ntp"], reading["sdcard"], reading["thingspeak"]
             ])

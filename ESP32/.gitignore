@@ -1,0 +1,36 @@
+# ---------------
+# PlatformIO / Build
+# ---------------
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# ---------------
+# VS Code (Editor Configs)
+# ---------------
+# Ignore local setting databases and absolute path configs
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch/
+.vscode
+
+# ---------------
+# Secrets & Security (CRITICAL)
+# ---------------
+# Covers the method we just set up
+secrets.ini
+
+# Covers your previous naming convention (with the dot)
+.secrets.ini
+
+# Covers the "Classic" C++ header method (just in case)
+src/secrets.h
+include/secrets.h
+secrets.h
+
+# ---------------
+# OS / System Files
+# ---------------
+.DS_Store
+Thumbs.db
