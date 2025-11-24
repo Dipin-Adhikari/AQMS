@@ -20,6 +20,7 @@ const char *const SSID_NAME = WIFI_SSID;
 const char *const WIFI_PASSWORD = WIFI_PASS;
 const char *const TS_API_KEY = THINGSPEAK_API_KEY;
 const char *const RENDER_URL = BACKEND_URL;
+const char *const SENSOR_API_KEY = SENSOR_KEY;
 
 // ----- NTP / TIMEZONE -----
 const char *const NTP_SERVER = "pool.ntp.org";

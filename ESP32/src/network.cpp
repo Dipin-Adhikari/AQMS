@@ -63,7 +63,9 @@ void sendToRenderBackend(float temp, float hum, int pm1, int pm25, int pm10,
 
     HTTPClient http;
     http.begin(client, RENDER_URL);
+    // http.begin("http://192.168.137.1:8000/api/data");
     http.addHeader("Content-Type", "application/json");
+    http.addHeader("x-api-key", SENSOR_API_KEY);
 
     JsonDocument jsonDoc;
 

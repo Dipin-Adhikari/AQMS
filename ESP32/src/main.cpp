@@ -8,9 +8,9 @@
 #include "config.h"
 #include "globals.h"
 #include "network.h"
+#include "rtc.h"
 #include "sensors.h"
 #include "storage.h"
-#include "rtc.h"
 
 
 uint64_t startTime = 0;
@@ -40,16 +40,6 @@ void setup() {
   analogSetPinAttenuation(ADC_PIN1, ADC_11db);
   analogSetPinAttenuation(ADC_PIN2, ADC_11db);
 
-  /* * CALIBRATION SECTION
-   * If you need to calibrate, measure real voltage with multimeter,
-   * uncomment lines below, upload, check Serial Monitor for new Vref values,
-   * then update Vref1/Vref2 variables in src/globals.cpp and comment this back
-   * out.
-   */
-  // calibrateVref(ADC_PIN1, 12.04, Vref1);
-  // calibrateVref(ADC_PIN2, 8.42, Vref2);
-  // -----------------------------
-
   // Initialize AHT20 and PM7003 sensor
   initSensors();
 
@@ -63,6 +53,7 @@ void setup() {
   struct tm timeinfo;
   bool ntp_ok = false;
   ntp_ok = syncTimeAndRTC(timeinfo);
+
   if (ntp_ok == false) {
     getRTCTime(timeinfo);
     statusNTP = false;
@@ -89,12 +80,8 @@ void setup() {
   float voltage1 = readVoltage(ADC_PIN1, Vref1);
   float voltage2 = readVoltage(ADC_PIN2, Vref2);
 
-  Serial.print("Voltage 1 (Vin): ");
-  Serial.print(voltage1);
-  Serial.println(" V");
-  Serial.print("Voltage 2 (Bat): ");
-  Serial.print(voltage2);
-  Serial.println(" V");
+  Serial.printf("Voltage 1 (Vin): %.2f V\n", voltage1);
+  Serial.printf("Voltage 2 (Bat): %.2f V\n", voltage2);
 
   // Put PMS to sleep
   sendPMSCommand(CMD_SLEEP);
@@ -103,15 +90,40 @@ void setup() {
   // Initialize SD Card Module
   initSD();
 
-  // Logging to SD
-  logToSD("/testdata1124.csv", temperature, humidity, pm1_0, pm2_5, pm10, voltage1, voltage2,
-          (rtc.begin() ? &timeinfo : nullptr));
+  // Log to Master SD Record (Offline & Online data)
+  logToSD("/testdata1124.csv", temperature, humidity, pm1_0, pm2_5, pm10,
+          voltage1, voltage2, (rtc.begin() ? &timeinfo : nullptr));
 
-  // --- Uploads ---
-  sendToThingSpeak(temperature, humidity, pm1_0, pm2_5, pm10, voltage1, voltage2);
+  
+  bool currentUploadSuccess = false;
 
-  sendToRenderBackend(temperature, humidity, pm1_0, pm2_5, pm10, voltage1,
-                      voltage2, &timeinfo);
+  if (statusWiFi) {
+    Serial.println(F("📶 WiFi is Online. Checking for backlog..."));
+
+    // Process Backlog (Upload missed data from previous offline cycles)
+    processBacklog("/backlog.csv");
+
+    // B. Upload Current Data
+    sendToThingSpeak(temperature, humidity, pm1_0, pm2_5, pm10,
+                                      voltage1, voltage2);
+    sendToRenderBackend(temperature, humidity, pm1_0, pm2_5, pm10, voltage1,
+                            voltage2, &timeinfo);
+
+
+    if (statusRender) {
+      currentUploadSuccess = true;
+    }
+  } else {
+    Serial.println(F("⚠️ WiFi Offline. Skipping immediate upload."));
+  }
+
+  // 3. If Upload Failed or WiFi was down, Save to Backlog
+  if (!currentUploadSuccess) {
+    Serial.println(
+        F("💾 Saving current reading to backlog.csv for later upload."));
+    logToBacklog("/backlog.csv", temperature, humidity, pm1_0, pm2_5, pm10,
+                 voltage1, voltage2, (rtc.begin() ? &timeinfo : nullptr));
+  }
 
   delay(5000);
 

@@ -24,6 +24,17 @@ class AQMSFullDataBase(BaseModel):
 class AQMSFullDataCreate(AQMSFullDataBase):
     pass
 
+class AQMSPublicDataResponse(BaseModel):
+    ts: int          # Timestamp
+    temp: float      # Temperature
+    hum: float       # Humidity
+    pm1: float        # PM 1.0
+    pm25: float       # PM 2.5
+    pm10: float        # PM 10
+
+    class Config:
+        orm_mode = True
+
 class AQMSFullDataResponse(AQMSFullDataBase):
     id: Optional[str] = None   # MongoDB _id as string
 

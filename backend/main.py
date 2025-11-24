@@ -27,6 +27,7 @@ import pytz
 from fastapi.responses import StreamingResponse
 import io
 import csv
+from fastapi import Header
 
 from database import get_users_collection  # IMPORTANT: Import this
 
@@ -72,11 +73,24 @@ async def shutdown_event():
     await database.close()
 
 # ==================== SENSOR DATA ROUTES ====================
+SENSOR_API_KEY = os.getenv("SENSOR_API_KEY")
+
+async def verify_sensor_key(x_api_key: str = Header(...)):
+    """
+    Validates that the request has the correct API key in the header.
+    """
+    if x_api_key != SENSOR_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid Sensor API Key"
+        )
+
 
 @app.post("/api/data", response_model=schemas.AQMSFullDataResponse)
 async def upload_full_data(
     data: schemas.AQMSFullDataCreate,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    authorized: bool = Depends(verify_sensor_key)
 ):
     response = await crud.create_full_data(data)
 
@@ -103,7 +117,7 @@ async def upload_full_data(
     return response
 
 
-@app.get("/api/data", response_model=list[schemas.AQMSFullDataResponse])
+@app.get("/api/data", response_model=list[schemas.AQMSPublicDataResponse])
 async def get_full_data():
     """Frontend GET endpoint to retrieve all sensor data"""
     return await crud.get_all_full_data()
@@ -278,3 +292,11 @@ async def export_csv(
     )
 
 
+@app.get("/admin/api/data", response_model=list[schemas.AQMSFullDataResponse])
+async def get_admin_full_data(current_admin = Depends(get_current_admin_user)):
+    """
+    Admin-only route. 
+    Returns EVERYTHING (Battery, flags, etc) + Public data.
+    Requires Admin JWT.
+    """
+    return await crud.get_all_full_data()

@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import { Shield, LogOut, Lock, CheckCircle2, XCircle, Download, Calendar, RefreshCw, Server, Activity } from "lucide-react";
-import HealthCards from "../../components/admin/HealthCards"; // Ensure path matches your project
+import HealthCards from "../../components/admin/HealthCards"; 
 
 type Reading = {
   ts: number;
@@ -45,12 +45,34 @@ export default function AdminDashboardPage() {
 
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // Memoized fetch function
+  // ==================== UPDATED FETCH FUNCTION ====================
+  // Now includes Token in headers to access the protected Admin Endpoint
   const fetchAllData = useCallback(async () => {
     setRefreshing(true);
+    
+    // 1. Get Token
+    const match = document.cookie.match(/(?:^| )token=([^;]+)/);
+    const token = match ? match[1] : null;
+
+    if (!token) {
+      console.error("No token found, cannot fetch admin data");
+      setRefreshing(false);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`${API_URL}/api/data`);
+      // 2. Fetch from Admin Endpoint with Authorization Header
+      const res = await fetch(`${API_URL}/admin/api/data`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // <--- CRITICAL CHANGE
+        }
+      });
+
       if (!res.ok) throw new Error("Failed to fetch data");
+      
       const json = await res.json();
       // Ensure we sort oldest to newest for charts
       const sortedData = Array.isArray(json) ? [...json].sort((a, b) => a.ts - b.ts) : [];
@@ -62,6 +84,7 @@ export default function AdminDashboardPage() {
       setLoading(false);
     }
   }, [API_URL]);
+  // ================================================================
 
   // Auth Check and Initial Load
   useEffect(() => {
@@ -92,7 +115,6 @@ export default function AdminDashboardPage() {
         await fetchAllData();
       } catch (err) {
         console.error("Auth check failed", err);
-        // Optional: Don't redirect immediately on network error, just show error state
       }
     };
 
