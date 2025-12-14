@@ -1,7 +1,6 @@
 # Air Quality Monitoring System (AQMS)
 
-A low-cost, IoT-enabled **Air Quality Monitoring System (AQMS)** designed to measure  
-**PM1, PM2.5, PM10, temperature, and humidity**, with local data logging and real-time cloud
+A low-cost, IoT-enabled **Air Quality Monitoring System (AQMS)** designed to measure **PM1, PM2.5, PM10, temperature, and humidity**, with local data logging and real-time cloud
 monitoring. The system is designed for scalable deployment in regions where reference-grade
 air quality stations are expensive and sparsely available.
 
